@@ -13,6 +13,11 @@ app.get('/', function(request, response) {
     response.sendFile(path.join(__dirname, '/static/index.html'));
 });
 
-server.listen(5000, function() {
+let port = process.env.PORT;
+if (port == null || port == "") {
+    port = 5000;
+}
+
+server.listen(port, function() {
     console.log('Starting server on port 5000');
 });
