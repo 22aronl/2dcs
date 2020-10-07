@@ -1,11 +1,35 @@
 var socket = io();
 
+var players = [];
+
 
 socket.emit('new player');
+
+var canvas = document.getElementById('canvas');
+canvas.width = 800;
+canvas.height = 600;
+var ctxt = canvas.getContext('2d');
+
 setInterval(function() {
+
     socket.emit('movement', movement);
     socket.emit("mouse", mouse);
-}, 1000 / 60);
+
+
+    draw();
+
+}, 1000 / 30);
+
+socket.on('new_player', function(data) {
+    players.push(1);
+});
+
+socket.on('update', function(data) {
+    if (data.type == 'player') {
+        console.log("PLAYER!");
+    }
+});
+
 
 var movement = {
     up: false,
@@ -62,7 +86,12 @@ document.addEventListener('keyup', function(event) {
     }
 });
 
-var canvas = document.getElementById('canvas');
-canvas.width = 800;
-canvas.height = 600;
-var context = canvas.getContext('2d');
+function draw() {
+    ctxt.clearRect(0, 0, 800, 600);
+    ctxt.fillStyle = 'green';
+    this.players.forEach((player) => {
+        ctxt.beginPath();
+        ctxt.arc(Math.floor((Math.random() * 800)), Math.floor((Math.random() * 600)), 10, 0, 2 * Math.PI);
+        ctxt.fill();
+    });
+}

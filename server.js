@@ -5,6 +5,7 @@ var socketIO = require('socket.io');
 var _game = require('./game');
 
 var Game = _game.Game;
+var Player = _game.Player;
 
 var app = express();
 var server = http.Server(app);
@@ -31,7 +32,9 @@ game = new Game(io);
 
 io.on('connection', function(socket) {
     socket.on('new player', function() {
-
+        let player = new Player();
+        game.players.push(player);
+        io.emit("new_player", { player: "new" });
     });
 });
 
