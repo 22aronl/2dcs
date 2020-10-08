@@ -3,6 +3,8 @@ var socket = io();
 var players = [];
 
 
+
+
 socket.emit('new player');
 
 var canvas = document.getElementById('canvas');
@@ -10,26 +12,54 @@ canvas.width = 800;
 canvas.height = 600;
 var ctxt = canvas.getContext('2d');
 
+
+socket.on('new_player2', function(data) {
+    players.push({
+        x: data.x,
+        y: data.y
+    });
+    document.getElementById("yes").innerHTML = players.length;
+});
+
+socket.on('new_player', function(data) {
+    players.push({
+        x: data.x,
+        y: data.y
+    });
+
+});
+
+socket.on('user_leave', function(data) {
+    delete players[data];
+});
+
+socket.on('update', function(data) {
+    data.forEach((ar) => {
+        if (ar.type === 'player') {
+            if (players[ar.id]) {
+                players[ar.id].x = ar.x;
+                players[ar.id].y = ar.y;
+            }
+        } else if (ar.type === 'Reset Round') {
+            players = [];
+        } else if (ar.type === 'new_player') {
+            players[ar.id] = {
+                x: ar.x,
+                y: ar.y
+            };
+        }
+    });
+
+});
+
 setInterval(function() {
 
     socket.emit('movement', movement);
     socket.emit("mouse", mouse);
 
-
     draw();
 
 }, 1000 / 30);
-
-socket.on('new_player', function(data) {
-    players.push(1);
-});
-
-socket.on('update', function(data) {
-    if (data.type == 'player') {
-        console.log("PLAYER!");
-    }
-});
-
 
 var movement = {
     up: false,
@@ -91,7 +121,7 @@ function draw() {
     ctxt.fillStyle = 'green';
     this.players.forEach((player) => {
         ctxt.beginPath();
-        ctxt.arc(Math.floor((Math.random() * 800)), Math.floor((Math.random() * 600)), 10, 0, 2 * Math.PI);
+        ctxt.arc(player.x, player.y, 10, 0, 2 * Math.PI);
         ctxt.fill();
     });
 }
