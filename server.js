@@ -33,18 +33,23 @@ io.on('connection', function(socket) {
     socket.on('new player', function() {
 
         game.players.forEach((playerz) => {
-            socket.emit('new_player2', { x: playerz.x, y: playerz.y });
+            socket.emit('new_player2', { x: playerz.x, y: playerz.y, angle: playerz.angle });
         });
 
 
         game.ghosts.push(player);
-        //console.log(game.players[game.players.length].x);
         console.log("New Player");
 
     });
 
     socket.on('movement', function(data) {
         player.movement = data;
+    });
+
+    socket.on('mouse', function(data) {
+        theta = Math.atan2(player.y - data.y, player.x - data.x);
+        player.angle = theta;
+        player.click = data.click;
     });
 
     socket.on('disconnect', function(data) {
@@ -55,15 +60,14 @@ io.on('connection', function(socket) {
     });
 });
 
+game.round();
 setInterval(() => {
-    //console.log("DOES THIS WORK?");
     console.log("New Round");
     game.round();
     io.emit('update', game.getUpdates());
 }, 4000);
 
 setInterval(() => {
-    //console.log("DOES THIS WORK?");
     game.update();
     io.emit('update', game.getUpdates());
 }, 1000 / 30);

@@ -1,8 +1,11 @@
 var socket = io();
 
 var players = [];
+var obstacles = [];
 
 
+const gunThickness = 2;
+const gunLength = 50;
 
 
 socket.emit('new player');
@@ -16,18 +19,12 @@ var ctxt = canvas.getContext('2d');
 socket.on('new_player2', function(data) {
     players.push({
         x: data.x,
-        y: data.y
+        y: data.y,
+        angle: data.angle
     });
     document.getElementById("yes").innerHTML = players.length;
 });
 
-socket.on('new_player', function(data) {
-    players.push({
-        x: data.x,
-        y: data.y
-    });
-
-});
 
 socket.on('user_leave', function(data) {
     delete players[data];
@@ -39,14 +36,25 @@ socket.on('update', function(data) {
             if (players[ar.id]) {
                 players[ar.id].x = ar.x;
                 players[ar.id].y = ar.y;
+                players[ar.id].angle = ar.angle;
             }
         } else if (ar.type === 'Reset Round') {
             players = [];
+            obstacles = [];
         } else if (ar.type === 'new_player') {
             players[ar.id] = {
                 x: ar.x,
-                y: ar.y
+                y: ar.y,
+                angle: ar.angle
             };
+        } else if (ar.type === 'obstacle') {
+            obstacles.push({
+                type: ar.shape,
+                x: ar.x,
+                y: ar.y,
+                w: ar.w,
+                h: ar.h
+            })
         }
     });
 
@@ -118,10 +126,32 @@ document.addEventListener('keyup', function(event) {
 
 function draw() {
     ctxt.clearRect(0, 0, 800, 600);
+
+    ctxt.fillStyle = 'red';
+    ctxt.lineWidth = 1.0;
+    this.obstacles.forEach((obstacle) => {
+        if (obstacle.type === 'square')
+            ctxt.fillRect(obstacle.x, obstacle.y, obstacle.w, obstacle.h);
+        else if (obstacle.type === 'circle') {
+            ctxt.beginPath();
+            ctxt.arc(obstacle.x, obstacle.y, obstacle.w, 0, 2 * Math.PI);
+            ctxt.fill();
+        }
+    });
+
+
+
     ctxt.fillStyle = 'green';
     this.players.forEach((player) => {
+        ctxt.lineWidth = gunThickness;
         ctxt.beginPath();
-        ctxt.arc(player.x, player.y, 10, 0, 2 * Math.PI);
+        ctxt.moveTo(player.x, player.y);
+        ctxt.lineTo(player.x - Math.cos(player.angle) * gunLength, player.y - Math.sin(player.angle) * gunLength);
+        ctxt.stroke();
+
+        ctxt.lineWidth = 1.0;
+        ctxt.beginPath();
+        ctxt.arc(player.x, player.y, 15, 0, 2 * Math.PI);
         ctxt.fill();
     });
 }
