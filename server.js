@@ -52,6 +52,10 @@ io.on('connection', function(socket) {
         player.click = data.click;
     });
 
+    socket.on('curPing', function(data) {
+        socket.emit('pong', data);
+    });
+
     socket.on('disconnect', function(data) {
         delete game.players[player.id];
         delete game.ghosts[player.id];

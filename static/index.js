@@ -19,6 +19,7 @@ canvas.height = 600;
 var ctxt = canvas.getContext('2d');
 
 
+
 socket.on('new_player2', function(data) {
     players.push({
         x: data.x,
@@ -74,10 +75,16 @@ socket.on('update', function(data) {
 
 });
 
+socket.on('pong', function(data) {
+    document.getElementById('ping').innerHTML = data - Date.now();
+});
+
 setInterval(function() {
+
 
     socket.emit('movement', movement);
     socket.emit("mouse", mouse);
+    socket.emit("curPing", Date.now());
 
     draw();
 
@@ -90,10 +97,13 @@ var movement = {
     right: false
 }
 
+var time = Date.now();
+
 var mouse = {
     x: 0,
     y: 0,
-    click: false
+    click: false,
+    time: 0
 }
 document.addEventListener('mousedown', function(event) {
     mouse.click = true;
