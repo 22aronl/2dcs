@@ -2,10 +2,13 @@ var socket = io();
 
 var players = [];
 var obstacles = [];
+var bullets = [];
 
 
 const gunThickness = 2;
 const gunLength = 50;
+const bulletThickness = 10;
+const bulletStartLength = 1;
 
 
 socket.emit('new player');
@@ -55,6 +58,17 @@ socket.on('update', function(data) {
                 w: ar.w,
                 h: ar.h
             })
+        } else if (ar.type === 'bullet') {
+            bullets.push({
+                xStart: ar.x,
+                yStart: ar.y,
+                r: bulletStartLength,
+                angle: ar.angle,
+                hit: ar.hit,
+                end: false,
+                xEnd: ar.xEnd,
+                yEnd: ar.yEnd
+            });
         }
     });
 
@@ -129,7 +143,7 @@ function draw() {
 
     ctxt.fillStyle = 'red';
     ctxt.lineWidth = 1.0;
-    this.obstacles.forEach((obstacle) => {
+    obstacles.forEach((obstacle) => {
         if (obstacle.type === 'square')
             ctxt.fillRect(obstacle.x, obstacle.y, obstacle.w, obstacle.h);
         else if (obstacle.type === 'circle') {
@@ -142,11 +156,11 @@ function draw() {
 
 
     ctxt.fillStyle = 'green';
-    this.players.forEach((player) => {
+    players.forEach((player) => {
         ctxt.lineWidth = gunThickness;
         ctxt.beginPath();
         ctxt.moveTo(player.x, player.y);
-        ctxt.lineTo(player.x - Math.cos(player.angle) * gunLength, player.y - Math.sin(player.angle) * gunLength);
+        ctxt.lineTo(player.x + Math.cos(player.angle) * gunLength, player.y + Math.sin(player.angle) * gunLength);
         ctxt.stroke();
 
         ctxt.lineWidth = 1.0;
@@ -154,4 +168,39 @@ function draw() {
         ctxt.arc(player.x, player.y, 15, 0, 2 * Math.PI);
         ctxt.fill();
     });
+
+    ctxt.fillStyle = 'orange';
+    //onsole.log(bullets.length);
+    bullets.forEach((bullet) => {
+        ctxt.lineWidth = bulletThickness;
+        ctxt.beginPath();
+        x = bullet.xEnd;
+        x1 = bullet.xStart;
+        x2 = bullet.xStart + Math.cos(bullet.angle) * bullet.r;
+
+        y = bullet.yEnd;
+        y1 = bullet.yStart;
+        y2 = bullet.yStart + Math.sin(bullet.angle) * bullet.r;
+        if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
+            bullet.end = true;
+            ctxt.moveTo(x, bullet.yEnd);
+            ctxt.lineTo(bullet.xEnd - Math.cos(bullet.angle) * bullet.r, bullet.yEnd - Math.sin(bullet.angle) * bullet.r);
+            bullet.r -= 1;
+
+            ctxt.stroke();
+            if (bullet.r < 0)
+                bullets.splice(bullet, 1);
+        } else {
+            ctxt.moveTo(bullet.xStart, bullet.yStart);
+
+            ctxt.lineTo(bullet.xStart + Math.cos(bullet.angle) * bullet.r, bullet.yStart + Math.sin(bullet.angle) * bullet.r);
+            bullet.r += 25;
+            bullet.xStart = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
+            bullet.yStart = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
+            ctxt.stroke();
+            if (bullet.r > 1000)
+                bullets.splice(bullet, 1);
+        }
+    });
+
 }

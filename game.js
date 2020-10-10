@@ -5,6 +5,7 @@ class Game {
         this.ghosts = [];
         this.updates = [];
         this.obstacles = [];
+        this.bullets = [];
         this.obstacles.push({
             type: 'square',
             x: 200,
@@ -65,6 +66,56 @@ class Game {
             });
         });
 
+        this.bullets.forEach((bullet) => { // MIGHT WANT TO OPTIMIZE IT
+            const temp = [];
+            this.players.forEach((player) => {
+                if (player.id != bullet.playerId && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size)) {
+                    const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size);
+                    if (!Number.isNaN(data.x))
+                        temp.push(data);
+                }
+            })
+            this.obstacles.forEach((obstacle) => {
+                if (obstacle.type === 'circle' && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w)) {
+                    const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w);
+                    if (!Number.isNaN(data.x))
+                        temp.push(data);
+                }
+            })
+            if (temp.length == 0) {
+                this.updates.push({
+                    type: 'bullet',
+                    x: bullet.x,
+                    y: bullet.y,
+                    angle: bullet.angle,
+                    hit: false,
+                    xEnd: 10,
+                    yEnd: 10
+                });
+            } else {
+                let mindist = Math.sqrt((temp[0].x - bullet.x) * (temp[0].x - bullet.x) + (temp[0].y - bullet.y) * (temp[0].y - bullet.y));
+                let end = 0;
+
+                for (let i = 1; i < temp.length; i++) {
+
+                    let mindisttemp = Math.sqrt((temp[i].x - bullet.x) * (temp[i].x - bullet.x) + (temp[i].y - bullet.y) * (temp[i].y - bullet.y));
+                    if (mindist > mindisttemp)
+                        end = i;
+                }
+
+                this.updates.push({
+                    type: 'bullet',
+                    x: bullet.x,
+                    y: bullet.y,
+                    angle: bullet.angle,
+                    hit: true,
+                    xEnd: temp[end].x,
+                    yEnd: temp[end].y
+                });
+            }
+            this.bullets.splice(bullet, 1);
+        });
+
     }
 
     getUpdates() {
@@ -93,6 +144,8 @@ class Player {
 
         this.angle = 180;
         this.click = false;
+        this.shoot = 0;
+        this.minTimeBetween = 500;
     }
 
     correctCollisions() {
@@ -106,7 +159,7 @@ class Player {
     }
 
     update() {
-        //console.log("x" + this.x + " Y " + this.y);
+
 
         if (this.movement.down)
             this.y += 5;
@@ -118,6 +171,17 @@ class Player {
             this.x += 5;
 
         this.correctCollisions();
+
+        if (this.click && Date.now() - this.shoot > this.minTimeBetween) {
+            this.shoot = Date.now();
+
+            this.game.bullets.push({
+                x: this.x,
+                y: this.y,
+                angle: this.angle,
+                playerId: this.id
+            });
+        }
     }
 
     getData() {
@@ -134,9 +198,57 @@ function circleOverlappCircle(xc, yc, rc, xr, yr, rr) {
     y = yc - yr;
     theta = Math.atan2(y, x);
     distc = Math.abs(dista - distb);
-    //console.log("X" + x + " Y " + y + " THETA" + theta + " distc+ " + distc);
-    //console.log(Math.cos(theta) * distc + " " + Math.sin(theta) * distc);
+
     return { x: Math.cos(theta) * distc, y: Math.sin(theta) * distc };
+}
+
+function lineIntersectPoint(x, y, theta, xr, yr, rr) {
+
+    m1 = Math.sin(theta) / Math.cos(theta);
+    d = -m1 * x + y - yr;
+    a = m1 * m1 + 1;
+    b = -2 * xr + 2 * m1 * d
+    c = xr * xr + d * d - rr * rr;
+
+    inner = Math.sqrt(b * b - 4 * a * c);
+
+    m2 = (-b + inner) / (2 * a);
+    m3 = (-b - inner) / (2 * a);
+
+    m4 = (m2 + m3) / 2;
+    y1 = m1 * (m4 - x) + y;
+
+    return { x: m4, y: y1 };
+}
+
+function lineIntersectCircle(x, y, theta, xr, yr, rr) {
+
+    m1 = Math.sin(theta) / Math.cos(theta);
+    // a1 = y;
+    // b1 = x;
+
+    // i = xr - b1;
+    // j = -yr - a1;
+
+    // a = i * i - rr * rr;
+    // b = 2 * i * j;
+    // c = j * j - rr * rr;
+
+    // inner = Math.sqrt(b * b - 4 * a * c);
+
+
+    // m2 = (-b + inner) / (2 * a);
+    // m3 = (-b - inner) / (2 * a);
+
+
+
+    const distance = Math.sqrt((xr - x) * (xr - x) + (yr - y) * (yr - y));
+    realAngle = Math.atan2(rr, distance);
+    m2 = Math.sin(realAngle + theta) / Math.cos(realAngle + theta);
+    m3 = Math.sin(-realAngle + theta) / Math.cos(-realAngle + theta);
+    return true;
+    //return (m3 >= m1 && m2 <= m1) || (m3 <= m1 && m2 >= m1);
+
 }
 
 function circleOverlappRect(xc, yc, r, xr, yr, w, h) {

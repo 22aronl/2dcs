@@ -47,7 +47,7 @@ io.on('connection', function(socket) {
     });
 
     socket.on('mouse', function(data) {
-        theta = Math.atan2(player.y - data.y, player.x - data.x);
+        theta = Math.atan2(data.y - player.y, data.x - player.x);
         player.angle = theta;
         player.click = data.click;
     });
