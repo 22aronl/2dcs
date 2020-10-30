@@ -3,3 +3,48 @@ canvas {
     height: 600px;
     border: 5px solid black;
 }
+
+.Game {
+    float: left
+}
+
+.box {
+    background: white;
+    width: 40%;
+    height: 80%;
+    border-radius: 6px;
+    margin: 5% auto auto auto;
+    padding: 5px;
+    text-align: center;
+    box-shadow: 5px 5px 10px #888888;
+    float: right;
+}
+
+.chatBox {
+    background: #f4f4f4;
+    border-radius: 5px;
+    width: 90%;
+    height: 60%;
+    margin: 5% auto 5% auto;
+    border: 1px solid;
+    border-color: #f4f4f4;
+    overflow-y: scroll;
+}
+
+.chatCell {
+    background: white;
+    width: 100%;
+    height: 15%;
+    margin: auto auto 1px auto;
+}
+
+.btn {
+    background: #2ecc71;
+    height: 30px;
+    color: white;
+    border-radius: 4px;
+}
+
+.btn:hover {
+    background: #2CC06B;
+}

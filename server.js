@@ -33,8 +33,10 @@ io.on('connection', function(socket) {
     socket.on('new player', function() {
 
         game.players.forEach((playerz) => {
-            socket.emit('new_player2', { x: playerz.x, y: playerz.y, angle: playerz.angle });
+            socket.emit('new_player2', { x: playerz.x, y: playerz.y, angle: playerz.angle, id: playerz.id });
         });
+
+        socket.emit('player_info_start', { x: player.x, y: player.y, angle: 0, id: player.id });
 
 
         game.ghosts.push(player);
@@ -43,7 +45,7 @@ io.on('connection', function(socket) {
     });
 
     socket.on('movement', function(data) {
-        player.movement = data;
+        player.setMovement(data);
     });
 
     socket.on('mouse', function(data) {
@@ -62,6 +64,14 @@ io.on('connection', function(socket) {
         io.emit('user_leave', player.id);
         console.log("USER LEFT");
     });
+
+    socket.on('sendMsgToServer', function(data) {
+
+        console.log(data);
+
+        io.emit('addToChat', data);
+
+    });
 });
 
 game.round();
@@ -75,3 +85,6 @@ setInterval(() => {
     game.update();
     io.emit('update', game.getUpdates());
 }, 1000 / 30);
+
+
+//Errors: If you have something closer to u than the target while all in a line, the hit reg will not work

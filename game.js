@@ -6,6 +6,9 @@ class Game {
         this.updates = [];
         this.obstacles = [];
         this.bullets = [];
+        this.gameState = [];
+        this.lastProcessedInput = [];
+        this.gameStateIndex = 0;
         this.obstacles.push({
             type: 'square',
             x: 200,
@@ -49,8 +52,19 @@ class Game {
                 id: player.id,
                 x: player.x,
                 y: player.y,
-                angle: player.angle
+                angle: player.angle,
+                inputProcessingNumber: this.lastProcessedInput[player.id]
             });
+        });
+    }
+
+    storeGameState(index) {
+        this.gameState[index] = [];
+        this.players.forEach((player) => {
+            this.gameState[index][player.id] = {
+                x: player.x,
+                y: player.y
+            };
         });
     }
 
@@ -115,7 +129,7 @@ class Game {
             }
             this.bullets.splice(bullet, 1);
         });
-
+        this.storeGameState(this.gameStateIndex++);
     }
 
     getUpdates() {
@@ -148,6 +162,11 @@ class Player {
         this.minTimeBetween = 500;
     }
 
+    setMovement(data) {
+        this.movement = data;
+        this.game.lastProcessedInput[data.id] = data.input_sequence_number;
+    }
+
     correctCollisions() {
         this.game.obstacles.forEach((obstacle) => {
             if (obstacle.type === 'circle') {
@@ -158,9 +177,7 @@ class Player {
         });
     }
 
-    update() {
-
-
+    move() {
         if (this.movement.down)
             this.y += 5;
         if (this.movement.up)
@@ -171,6 +188,11 @@ class Player {
             this.x += 5;
 
         this.correctCollisions();
+    }
+
+    update() {
+
+        this.move();
 
         if (this.click && Date.now() - this.shoot > this.minTimeBetween) {
             this.shoot = Date.now();

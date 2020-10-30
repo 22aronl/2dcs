@@ -3,12 +3,17 @@ var socket = io();
 var players = [];
 var obstacles = [];
 var bullets = [];
+var chatTexts = [];
+var pendingInputs = [];
+
+var newGame = false;
 
 
 const gunThickness = 2;
 const gunLength = 50;
 const bulletThickness = 10;
 const bulletStartLength = 1;
+const maxChatLength = 20;
 
 
 socket.emit('new player');
@@ -17,16 +22,62 @@ var canvas = document.getElementById('canvas');
 canvas.width = 800;
 canvas.height = 600;
 var ctxt = canvas.getContext('2d');
+var chatText = document.getElementById('chat-text');
+var chatInput = document.getElementById('chat-input');
+var chatForm = document.getElementById('chat-form');
 
+var input_sequence_number = 0;
+var playerId;
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    document.getElementById('chat-input').addEventListener('focus', function() {
+        typing = true;
+    });
+    document.getElementById('chat-input').addEventListener('blur', function() {
+        typing = false;
+    });
+});
+
+
+document.onkeyup = function(event) {
+
+    //user pressed and released enter key
+    if (event.keyCode === 13) {
+
+        if (!typing) {
+            //user is not already typing, focus our chat text form
+            chatInput.focus();
+
+        } else {
+
+            //user sent a message, unfocus our chat form 
+            chatInput.blur();
+        }
+
+    }
+}
 
 
 socket.on('new_player2', function(data) {
-    players.push({
+    players[data.id] = {
+        x: data.x,
+        y: data.y,
+        angle: data.angle,
+        id: data.id
+    };
+    document.getElementById("yes").innerHTML = players.length;
+});
+
+socket.on('player_info_start', function(data) {
+    playerId = data.id;
+    players[playerId] = {
         x: data.x,
         y: data.y,
         angle: data.angle
-    });
-    document.getElementById("yes").innerHTML = players.length;
+    };
 });
 
 
@@ -37,14 +88,33 @@ socket.on('user_leave', function(data) {
 socket.on('update', function(data) {
     data.forEach((ar) => {
         if (ar.type === 'player') {
-            if (players[ar.id]) {
-                players[ar.id].x = ar.x;
-                players[ar.id].y = ar.y;
-                players[ar.id].angle = ar.angle;
+            if (playerId == data.id) {
+                var j = 0;
+                while (j < pendingInputs.length) {
+                    var input = this.pendingInputs[j];
+                    if (input.input_sequence_number <= data.input_sequence_number)
+                        this.pendingInputs.splice(j, 1);
+                    else {
+                        players[ar.id].x = ar.x;
+                        players[ar.id].y = ar.y;
+                        players[ar.id].angle = ar.angle;
+                        j++;
+                    }
+                }
+            } else {
+
+                if (players[ar.id]) {
+                    players[ar.id].x = ar.x;
+                    players[ar.id].y = ar.y;
+                    players[ar.id].angle = ar.angle;
+                }
             }
+
+
         } else if (ar.type === 'Reset Round') {
             players = [];
             obstacles = [];
+            newGame = true;
         } else if (ar.type === 'new_player') {
             players[ar.id] = {
                 x: ar.x,
@@ -79,12 +149,86 @@ socket.on('pong', function(data) {
     document.getElementById('ping').innerHTML = data - Date.now();
 });
 
+socket.on('addToChat', function(data) {
+    console.log("Got a Chat Message");
+    chatTexts.push(data);
+    if (chatTexts.length > maxChatLength)
+        chatTexts.shift();
+});
+
+
+chatForm.onsubmit = function(e) {
+    //prevent the form from refreshing the page
+    e.preventDefault();
+
+    //call sendMsgToServer socket function, with form text value as argument
+    socket.emit('sendMsgToServer', chatInput.value);
+    chatInput.value = "";
+}
+
+function updateChatBox() {
+    chatText.innerHTML = "";
+    chatTexts.forEach((data) => {
+        chatText.innerHTML += '<div class="chatCell">' + data + '</div>';
+    });
+    chatText.scrollTop = chatText.scrollHeight;
+}
+
+function correctCollisions(playerId) {
+    x = players[playerId].x;
+    y = players[playerId].y;
+    size = 15;
+    obstacles.forEach((obstacle) => {
+        if (obstacle.type === 'circle') {
+            const data = this.circleOverlappCircle(x, y, size, obstacle.x, obstacle.y, obstacle.w);
+            players[playerId].x += data.x;
+            players[playerId].y += data.y;
+        }
+    });
+}
+
+function circleOverlappCircle(xc, yc, rc, xr, yr, rr) {
+    dista = Math.sqrt((xc - xr) * (xc - xr) + (yc - yr) * (yc - yr));
+    distb = rc + rr;
+    if (distb < dista)
+        return { x: 0, y: 0 };
+    x = xc - xr;
+    y = yc - yr;
+    theta = Math.atan2(y, x);
+    distc = Math.abs(dista - distb);
+
+    return { x: Math.cos(theta) * distc, y: Math.sin(theta) * distc };
+}
+
+function move(movement, playerId) {
+    if (movement.down)
+        players[playerId].y += 5;
+    if (movement.up)
+        players[playerId].y -= 5;
+    if (movement.left)
+        players[playerId].x -= 5;
+    if (movement.right)
+        players[playerId].x += 5;
+
+    this.correctCollisions(playerId);
+    //console.log()
+
+}
+
 setInterval(function() {
+    //console.log(players.length);
+    if (newGame) {
+        movement.input_sequence_number = input_sequence_number++;
+        socket.emit('movement', movement);
+        socket.emit("mouse", mouse);
+        socket.emit("curPing", Date.now());
 
+        move(movement, playerId);
 
-    socket.emit('movement', movement);
-    socket.emit("mouse", mouse);
-    socket.emit("curPing", Date.now());
+        updateChatBox();
+
+        pendingInputs.push(movement);
+    }
 
     draw();
 
@@ -181,7 +325,7 @@ function draw() {
 
     ctxt.fillStyle = 'orange';
     //onsole.log(bullets.length);
-    bullets.forEach((bullet) => {
+    bullets.forEach((bullet, index) => {
         ctxt.lineWidth = bulletThickness;
         ctxt.beginPath();
         x = bullet.xEnd;
@@ -194,22 +338,23 @@ function draw() {
         if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
             bullet.end = true;
             ctxt.moveTo(x, bullet.yEnd);
+
             ctxt.lineTo(bullet.xEnd - Math.cos(bullet.angle) * bullet.r, bullet.yEnd - Math.sin(bullet.angle) * bullet.r);
             bullet.r -= 1;
 
             ctxt.stroke();
             if (bullet.r < 0)
-                bullets.splice(bullet, 1);
+                delete bullets[index];
         } else {
             ctxt.moveTo(bullet.xStart, bullet.yStart);
-
             ctxt.lineTo(bullet.xStart + Math.cos(bullet.angle) * bullet.r, bullet.yStart + Math.sin(bullet.angle) * bullet.r);
             bullet.r += 25;
             bullet.xStart = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
             bullet.yStart = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
             ctxt.stroke();
-            if (bullet.r > 1000)
-                bullets.splice(bullet, 1);
+            if (bullet.r > 1000) {
+                delete bullets[index];
+            }
         }
     });
 

@@ -7,11 +7,32 @@
     <link rel="stylesheet" type="text/css" href="/main.css" />
 </head>
 
+
+
+
 <body>
-    <canvas id="canvas"></canvas>
-    <h1 id="yes"> HI </h1>
-    <h1 id="ping">100</h1>
+    <div class="container">
+        <div class="Game">
+            <canvas id="canvas"></canvas>
+            <h1 id="yes"> HI </h1>
+            <h1 id="ping">100</h1>
+        </div>
+
+        <div class="box">
+            <div>Chat</div>
+            <div class="chatBox" id="chat-text">
+            </div>
+            <form id="chat-form">
+                <input id="chat-input" type="text" style="width:30%;height:30px;" autocomplete="off">
+                <input class="btn" type="submit" value="Send"></input>
+            </form>
+        </div>
+    </div>
+
+
 </body>
+
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="/index.js"></script>
 
