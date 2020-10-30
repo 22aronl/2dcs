@@ -29,7 +29,8 @@ class Game {
     round() {
         this.players = this.ghosts;
         this.ghost = [];
-
+        this.gameState = [];
+        this.gameStateIndex = 0;
         this.updates.push({
             type: "Reset Round"
         })
