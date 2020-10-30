@@ -110,10 +110,16 @@ socket.on('update', function(data) {
                     if (input.input_sequence_number <= data.input_sequence_number)
                         this.pendingInputs.splice(j, 1);
                     else {
-                        players[ar.id].x = ar.x;
-                        players[ar.id].y = ar.y;
-                        players[ar.id].angle = ar.angle;
-                        j++;
+                        player[playerId].x = data.x;
+                        player[playerId].y = data.y;
+                        while (j++ < this.pendingInputs.length) {
+                            movement = this.pendingInputs[j];
+                            this.move(movement, playerId);
+                            this.correctCollisions(playerId);
+                            pendingInputs[j].x = player[playerId].x;
+                            pendingInputs[j].y = player[playerId].y;
+
+                        }
                     }
                 }
             } else {
@@ -266,7 +272,8 @@ setInterval(function() {
         move(movement, playerId);
 
         updateChatBox();
-
+        movement.x = players[playerId].x;
+        movement.y = players[playerId].y;
         pendingInputs.push(movement);
     }
 
@@ -282,7 +289,9 @@ var movement = {
     up: false,
     down: false,
     left: false,
-    right: false
+    right: false,
+    x: 0,
+    y: 0
 }
 
 var time = Date.now();
