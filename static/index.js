@@ -345,6 +345,10 @@ document.addEventListener('keyup', function(event) {
     }
 });
 
+function distance(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
 function draw() {
     ctxt.clearRect(0, 0, 800, 600);
 
@@ -360,11 +364,21 @@ function draw() {
         y = bullet.yEnd;
         y1 = bullet.yStart;
         y2 = bullet.yStart + Math.sin(bullet.angle) * bullet.r;
+        console.log(bullet);
         if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
             bullet.end = true;
             ctxt.moveTo(x, bullet.yEnd);
 
-            ctxt.lineTo(bullet.xEnd - Math.cos(bullet.angle) * bullet.r, bullet.yEnd - Math.sin(bullet.angle) * bullet.r);
+            xlen = Math.cos(bullet.angle) * bullet.r;
+            ylen = Math.sin(bullet.angle) * bullet.r;
+
+            if (distance(bullet.xStart, bullet.yStart, bullet.xEnd, bullet.yEnd) < Math.sqrt(xlen * xlen + ylen * ylen)) {
+                xlen = bullet.xEnd - bullet.xStart;
+                ylen = bullet.yEnd - bullet.yStart;
+            }
+
+
+            ctxt.lineTo(bullet.xEnd - xlen, bullet.yEnd - ylen);
             bullet.r -= (bullet.r / 5 * 4 + bulletShrink);
 
             ctxt.stroke();
@@ -374,11 +388,24 @@ function draw() {
             ctxt.moveTo(bullet.xStart, bullet.yStart);
             ctxt.lineTo(bullet.xStart + Math.cos(bullet.angle) * bullet.r, bullet.yStart + Math.sin(bullet.angle) * bullet.r);
             bullet.r += 50;
-            bullet.xStart = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
-            bullet.yStart = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
-            ctxt.stroke();
-            if (bullet.r > 1000) {
+
+            xs = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
+            ys = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
+
+            if (bullet.hit && (distance(xs, ys, bullet.xEnd, bullet.yEnd) > distance(bullet.xStart, bullet.yStart, bullet.xEnd, bullet.yEnd))) {
                 delete bullets[index];
+            } else {
+
+
+                bullet.xStart = xs;
+                bullet.yStart = ys;
+
+
+                ctxt.stroke();
+
+                if (bullet.r > 1000) {
+                    delete bullets[index];
+                }
             }
         }
     });
