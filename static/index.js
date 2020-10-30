@@ -7,13 +7,16 @@ var chatTexts = [];
 var pendingInputs = [];
 
 var newGame = false;
+var startTime = -1;
+var roundTime = -1;
 
 
-const gunThickness = 2;
+const gunThickness = 4;
 const gunLength = 50;
-const bulletThickness = 10;
-const bulletStartLength = 1;
+const bulletThickness = 2;
+const bulletStartLength = 35;
 const maxChatLength = 20;
+const bulletShrink = 8;
 
 
 socket.emit('new player');
@@ -68,16 +71,22 @@ socket.on('new_player2', function(data) {
         angle: data.angle,
         id: data.id
     };
-    document.getElementById("yes").innerHTML = players.length;
+    document.getElementById("yes").innerHTML = "Number of Players: " + players.length;
+});
+
+socket.on('new_obstacle2', function(ar) {
+
+    obstacles.push({
+        type: ar.type,
+        x: ar.x,
+        y: ar.y,
+        w: ar.w,
+        h: ar.h
+    });
 });
 
 socket.on('player_info_start', function(data) {
     playerId = data.id;
-    players[playerId] = {
-        x: data.x,
-        y: data.y,
-        angle: data.angle
-    };
 });
 
 
@@ -115,6 +124,7 @@ socket.on('update', function(data) {
             players = [];
             obstacles = [];
             newGame = true;
+            addToChatBox("Game:  New Round");
         } else if (ar.type === 'new_player') {
             players[ar.id] = {
                 x: ar.x,
@@ -140,20 +150,35 @@ socket.on('update', function(data) {
                 xEnd: ar.xEnd,
                 yEnd: ar.yEnd
             });
+        } else if (ar.type == 'time') {
+            startTime = Date.now();
+            roundTime = ar.time;
+        } else if (ar.type == 'scoreboard') {
+            if (ar.index == playerId)
+                addToChatBox("Game: You scored " + ar.score);
+            else
+                addToChatBox("Game: Player " + ar.index + " scored " + ar.score);
+        } else {
+            console.log("ERROR IN Update type " + data.type);
         }
     });
 
 });
 
+function addToChatBox(data) {
+    chatTexts.push(data);
+    if (chatTexts.length > maxChatLength)
+        chatTexts.shift();
+    updateChatBox();
+}
+
 socket.on('pong', function(data) {
-    document.getElementById('ping').innerHTML = data - Date.now();
+    document.getElementById('ping').innerHTML = "Ping: " + (Date.now() - data);
 });
 
 socket.on('addToChat', function(data) {
     console.log("Got a Chat Message");
-    chatTexts.push(data);
-    if (chatTexts.length > maxChatLength)
-        chatTexts.shift();
+    addToChatBox(data);
 });
 
 
@@ -162,7 +187,7 @@ chatForm.onsubmit = function(e) {
     e.preventDefault();
 
     //call sendMsgToServer socket function, with form text value as argument
-    socket.emit('sendMsgToServer', chatInput.value);
+    socket.emit('sendMsgToServer', "Player " + playerId + ": " + chatInput.value);
     chatInput.value = "";
 }
 
@@ -201,6 +226,8 @@ function circleOverlappCircle(xc, yc, rc, xr, yr, rr) {
 }
 
 function move(movement, playerId) {
+    if (!players[playerId])
+        return;
     if (movement.down)
         players[playerId].y += 5;
     if (movement.up)
@@ -228,6 +255,10 @@ setInterval(function() {
         updateChatBox();
 
         pendingInputs.push(movement);
+    }
+
+    if (startTime != -1) {
+        document.getElementById("roundTime").innerHTML = "Roundtime: " + Math.ceil(roundTime - (Date.now() - startTime) / 1000);
     }
 
     draw();
@@ -295,6 +326,41 @@ document.addEventListener('keyup', function(event) {
 function draw() {
     ctxt.clearRect(0, 0, 800, 600);
 
+    ctxt.fillStyle = 'blue';
+    //onsole.log(bullets.length);
+    bullets.forEach((bullet, index) => {
+        ctxt.lineWidth = bulletThickness;
+        ctxt.beginPath();
+        x = bullet.xEnd;
+        x1 = bullet.xStart;
+        x2 = bullet.xStart + Math.cos(bullet.angle) * bullet.r;
+
+        y = bullet.yEnd;
+        y1 = bullet.yStart;
+        y2 = bullet.yStart + Math.sin(bullet.angle) * bullet.r;
+        if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
+            bullet.end = true;
+            ctxt.moveTo(x, bullet.yEnd);
+
+            ctxt.lineTo(bullet.xEnd - Math.cos(bullet.angle) * bullet.r, bullet.yEnd - Math.sin(bullet.angle) * bullet.r);
+            bullet.r -= (bullet.r / 5 * 4 + bulletShrink);
+
+            ctxt.stroke();
+            if (bullet.r < 0)
+                delete bullets[index];
+        } else {
+            ctxt.moveTo(bullet.xStart, bullet.yStart);
+            ctxt.lineTo(bullet.xStart + Math.cos(bullet.angle) * bullet.r, bullet.yStart + Math.sin(bullet.angle) * bullet.r);
+            bullet.r += 50;
+            bullet.xStart = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
+            bullet.yStart = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
+            ctxt.stroke();
+            if (bullet.r > 1000) {
+                delete bullets[index];
+            }
+        }
+    });
+
     ctxt.fillStyle = 'red';
     ctxt.lineWidth = 1.0;
     obstacles.forEach((obstacle) => {
@@ -306,6 +372,8 @@ function draw() {
             ctxt.fill();
         }
     });
+
+
 
 
 
@@ -323,39 +391,14 @@ function draw() {
         ctxt.fill();
     });
 
-    ctxt.fillStyle = 'orange';
-    //onsole.log(bullets.length);
-    bullets.forEach((bullet, index) => {
-        ctxt.lineWidth = bulletThickness;
+
+
+    if (players[playerId]) {
+        var player = players[playerId];
+        ctxt.lineWidth = 1.0;
         ctxt.beginPath();
-        x = bullet.xEnd;
-        x1 = bullet.xStart;
-        x2 = bullet.xStart + Math.cos(bullet.angle) * bullet.r;
-
-        y = bullet.yEnd;
-        y1 = bullet.yStart;
-        y2 = bullet.yStart + Math.sin(bullet.angle) * bullet.r;
-        if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
-            bullet.end = true;
-            ctxt.moveTo(x, bullet.yEnd);
-
-            ctxt.lineTo(bullet.xEnd - Math.cos(bullet.angle) * bullet.r, bullet.yEnd - Math.sin(bullet.angle) * bullet.r);
-            bullet.r -= 1;
-
-            ctxt.stroke();
-            if (bullet.r < 0)
-                delete bullets[index];
-        } else {
-            ctxt.moveTo(bullet.xStart, bullet.yStart);
-            ctxt.lineTo(bullet.xStart + Math.cos(bullet.angle) * bullet.r, bullet.yStart + Math.sin(bullet.angle) * bullet.r);
-            bullet.r += 25;
-            bullet.xStart = bullet.xStart + Math.cos(bullet.angle) * bullet.r / 3 * 2;
-            bullet.yStart = bullet.yStart + Math.sin(bullet.angle) * bullet.r / 3 * 2;
-            ctxt.stroke();
-            if (bullet.r > 1000) {
-                delete bullets[index];
-            }
-        }
-    });
+        ctxt.arc(player.x, player.y, 15, 0, 2 * Math.PI);
+        ctxt.stroke();
+    }
 
 }
