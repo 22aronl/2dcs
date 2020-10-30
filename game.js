@@ -110,7 +110,7 @@ class Game {
             this.players.forEach((player) => {
                 if (player.id != bullet.playerId && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size)) {
                     const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size);
-                    if (!Number.isNaN(data.x)) {
+                    if (!Number.isNaN(data) && !Number.isNaN(data.x)) {
                         data.isPlayer = bullet.playerId;
                         temp.push(data);
                     }
@@ -119,7 +119,7 @@ class Game {
             this.obstacles.forEach((obstacle) => {
                 if (obstacle.type === 'circle' && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w)) {
                     const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w);
-                    if (!Number.isNaN(data.x)) {
+                    if (!Number.isNaN(data) && !Number.isNaN(data.x)) {
                         data.isPlayer = -1;
                         temp.push(data);
                     }
@@ -265,7 +265,12 @@ function circleOverlappCircle(xc, yc, rc, xr, yr, rr) {
     return { x: Math.cos(theta) * distc, y: Math.sin(theta) * distc };
 }
 
+function distance(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
 function lineIntersectPoint(x, y, theta, xr, yr, rr) {
+
 
     m1 = Math.sin(theta) / Math.cos(theta);
     d = -m1 * x + y - yr;
@@ -279,7 +284,10 @@ function lineIntersectPoint(x, y, theta, xr, yr, rr) {
     m3 = (-b - inner) / (2 * a);
 
     m4 = (m2 + m3) / 2;
-    y1 = m1 * (m4 - x) + y;
+    y1 = m1 * (m4 - x) + y
+
+    if (distance(x, y, m4, y1) < distance(x + Math.cos(theta), y + Math.sin(theta), m4, y1))
+        return NaN;
 
     return { x: m4, y: y1 };
 }
