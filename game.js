@@ -7,15 +7,11 @@ class Game {
         this.obstacles = [];
         this.bullets = [];
         this.gameState = [];
+        this.scoreBoards = [];
         this.lastProcessedInput = [];
         this.gameStateIndex = 0;
-        this.obstacles.push({
-            type: 'square',
-            x: 200,
-            y: 200,
-            w: 40,
-            h: 40,
-        });
+        this.maxGameStateStorage = 120;
+        this.startTime = 0;
 
         this.obstacles.push({
             type: 'circle',
@@ -23,17 +19,56 @@ class Game {
             y: 400,
             w: 40,
             h: 40
-        })
+        });
+
+        this.obstacles.push({
+            type: 'circle',
+            x: 300,
+            y: 400,
+            w: 60,
+            h: 60
+        });
+
+        this.obstacles.push({
+            type: 'circle',
+            x: 200,
+            y: 200,
+            w: 40,
+            h: 40
+        });
+    }
+
+    time(len) {
+        this.updates.push({
+            type: 'time',
+            time: len
+        });
     }
 
     round() {
-        this.players = this.ghosts;
-        this.ghost = [];
         this.gameState = [];
         this.gameStateIndex = 0;
+        this.ghosts.forEach((ghost) => {
+            this.players.push(ghost);
+        });
+        this.ghosts = [];
+
+        this.startTime = Date.now();
+
         this.updates.push({
             type: "Reset Round"
-        })
+        });
+
+        this.scoreBoards.forEach((score, index) => {
+            this.updates.push({
+                type: "scoreboard",
+                index: index,
+                score: score
+            });
+        });
+
+
+        this.scoreBoards = [];
 
         this.obstacles.forEach((obstacle) => {
             this.updates.push({
@@ -47,7 +82,7 @@ class Game {
         });
 
         this.players.forEach((player) => {
-            player.update();
+            player.reset();
             this.updates.push({
                 type: 'new_player',
                 id: player.id,
@@ -60,6 +95,8 @@ class Game {
     }
 
     storeGameState(index) {
+        if (this.gameState.length >= this.maxGameStateStorage)
+            this.gameState.shift();
         this.gameState[index] = [];
         this.players.forEach((player) => {
             this.gameState[index][player.id] = {
@@ -81,20 +118,29 @@ class Game {
             });
         });
 
+        this.updates.push({
+            type: 'numOfPlayers',
+            num: this.players.length
+        });
+
         this.bullets.forEach((bullet) => { // MIGHT WANT TO OPTIMIZE IT
             const temp = [];
             this.players.forEach((player) => {
                 if (player.id != bullet.playerId && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size)) {
                     const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, player.x, player.y, player.size);
-                    if (!Number.isNaN(data.x))
+                    if (!Number.isNaN(data.x)) {
+                        data.isPlayer = bullet.playerId;
                         temp.push(data);
+                    }
                 }
             })
             this.obstacles.forEach((obstacle) => {
                 if (obstacle.type === 'circle' && lineIntersectCircle(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w)) {
                     const data = lineIntersectPoint(bullet.x, bullet.y, bullet.angle, obstacle.x, obstacle.y, obstacle.w);
-                    if (!Number.isNaN(data.x))
+                    if (!Number.isNaN(data.x)) {
+                        data.isPlayer = -1;
                         temp.push(data);
+                    }
                 }
             })
             if (temp.length == 0) {
@@ -116,6 +162,11 @@ class Game {
                     let mindisttemp = Math.sqrt((temp[i].x - bullet.x) * (temp[i].x - bullet.x) + (temp[i].y - bullet.y) * (temp[i].y - bullet.y));
                     if (mindist > mindisttemp)
                         end = i;
+                }
+                if (temp[end].isPlayer >= 0) {
+                    if (!this.scoreBoards[temp[end].isPlayer])
+                        this.scoreBoards[temp[end].isPlayer] = 0;
+                    this.scoreBoards[temp[end].isPlayer]++;
                 }
 
                 this.updates.push({
@@ -149,6 +200,7 @@ class Player {
         this.socket = socket;
         this.speed = 5;
         this.size = 15;
+        this.score = 0;
 
         this.movement = {
             up: false,
@@ -160,7 +212,13 @@ class Player {
         this.angle = 180;
         this.click = false;
         this.shoot = 0;
-        this.minTimeBetween = 500;
+        this.minTimeBetween = 75;
+    }
+
+    reset() {
+        this.x = Math.floor(Math.random() * 700);
+        this.y = Math.floor(Math.random() * 500);
+        this.score = 0;
     }
 
     setMovement(data) {

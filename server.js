@@ -4,6 +4,8 @@ var path = require('path');
 var socketIO = require('socket.io');
 var _game = require('./game');
 
+const roundLength = 20;
+
 var Game = _game.Game;
 var Player = _game.Player;
 
@@ -29,17 +31,27 @@ server.listen(port, function() {
 game = new Game(io);
 
 io.on('connection', function(socket) {
-    const player = new Player(game, Math.floor(Math.random() * 300), Math.floor(Math.random() * 300), game.players.length, socket);
+    const player = new Player(game, Math.floor(Math.random() * 600), Math.floor(Math.random() * 800), game.players.length + game.ghosts.length, socket);
     socket.on('new player', function() {
 
         game.players.forEach((playerz) => {
             socket.emit('new_player2', { x: playerz.x, y: playerz.y, angle: playerz.angle, id: playerz.id });
         });
 
-        socket.emit('player_info_start', { x: player.x, y: player.y, angle: 0, id: player.id });
+        game.obstacles.forEach((obstacle) => {
+            socket.emit('new_obstacle2', { type: obstacle.type, x: obstacle.x, y: obstacle.y, w: obstacle.w, h: obstacle.h });
+        });
+
+        socket.emit('startSpectatingInfo', { roundTime: roundLength, elapsedTime: (Date.now() - game.startTime) });
+
+        socket.emit('player_info_start', { id: player.id });
 
 
         game.ghosts.push(player);
+
+        if (game.players.length == 1 || game.players.length == 0 && game.ghosts.length == 2)
+            game.round();
+
         console.log("New Player");
 
     });
@@ -78,8 +90,9 @@ game.round();
 setInterval(() => {
     console.log("New Round");
     game.round();
+    game.time(roundLength);
     io.emit('update', game.getUpdates());
-}, 4000);
+}, 1000 * roundLength);
 
 setInterval(() => {
     game.update();
