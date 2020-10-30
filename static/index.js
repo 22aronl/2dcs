@@ -364,7 +364,6 @@ function draw() {
         y = bullet.yEnd;
         y1 = bullet.yStart;
         y2 = bullet.yStart + Math.sin(bullet.angle) * bullet.r;
-        console.log(bullet);
         if (bullet.end || (bullet.hit && (((x1 - x <= 0 && x - x2 <= 0) || (x1 - x >= 0 && x - x2 >= 0)) && ((y1 - y <= 0 && y - y2 <= 0) || (y1 - y >= 0 && y - y2 >= 0))))) {
             bullet.end = true;
             ctxt.moveTo(x, bullet.yEnd);
